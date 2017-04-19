@@ -46,6 +46,8 @@ for item in bs.find_all('th', 'pogodacell2'):
 #
 #TODO написать функцию   определяющую   ясно, переменная облачность или сплошная облачность
 
+
+
 # night, clear|partly cloudy, overcast
 
 print(meteo_info)
