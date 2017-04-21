@@ -1,8 +1,9 @@
 from astral import Astral
 from datetime import datetime, date, time, timedelta, tzinfo
-import time as t
+import math
+import sympy
 
-# figure out the degree of vertical stability of air
+# evaluate the degree of vertical stability of air
 
 city_name = 'Moscow'
 a = Astral()
@@ -17,7 +18,7 @@ print(datetime.time(datetime.now()))
 # datetime.combine(date, time) - объект datetime из комбинации объектов date и time.
 # print(datetime.datetime.time(13, 30))
 # timestamp = datetime.today().timestamp()
-dtime = time(0, 0)
+dtime = time(7, 0)
 dt = date(2017, 4, 19)
 dstamp = datetime.combine(dt, dtime).timestamp()
 dt = datetime.fromtimestamp(dstamp)
@@ -35,15 +36,16 @@ print('time: %s' % dt.time())
 
 print('tzinfo %s ' % datetime.utcnow())
 
-
+# нахождение времени суток
 def time_of_day(dt, city_name):
     a = Astral()
     # a.solar_depression = 'civil'
     city = a[city_name]
     sun = city.sun(date=dt.date(), local=True)
     sunrise = sun['sunrise'].replace(tzinfo=None)
-    sunrise_tomorrow = city.sun(date=dt.date() + timedelta(days=1), local=True)['sunrise'].replace(tzinfo=None)
-    sunset_yesterday = city.sun(date=dt.date() - timedelta(days=1), local=True)['sunset'].replace(tzinfo=None)
+
+    start_earth_day = datetime.combine(dt.date(), time(0, 0))
+    end_earth_day = datetime.combine(dt.date(), time(23, 59))
     sunset = sun['sunset'].replace(tzinfo=None)
 
     if dt > sunrise:
@@ -56,15 +58,82 @@ def time_of_day(dt, city_name):
             return 'morning'
         elif dt - sunset <= timedelta(hours=2):
             return 'evening'
-        elif (sunset + timedelta(hours=2)).replace(tzinfo=None) < dt < sunrise_tomorrow:
+        elif (sunset + timedelta(hours=2)).replace(tzinfo=None) < dt <= end_earth_day:
             return 'night'
-    elif dt > sunset_yesterday + timedelta(hours=2):
+    elif dt >= start_earth_day:
         return 'night'
+
+def get_k4(wind_speed):
+    i = (math.ceil(wind_speed))
+    k4 = [1, 1.33, 1.67, 2.0, 2.34, 2.67, 3.0, 3.34, 3.67, 4.0, 5.68]
+    return k4[i-1]
+
+
+# val_list, air_t
+def get_k7(val_list, air_t):
+    value_list = list(zip([-40, -20, 0, 20, 40], eval(val_list)))
+    return sympy.interpolate(value_list, air_t)
+
+
+
+# Определение степени вертикальной устойчивости воздуха по прогнозу погоды
+def get_dovsoa(wind_speed, time_of_day, cloudiness=False, snow=False):
+    # cloudiness - облачность
+    # снег - наличие снежного покрова
+    if type(snow) != bool and type(cloudiness) != bool:
+        return None
+
+    wind_speed_r = float(wind_speed)
+    if wind_speed_r < 2:
+        wind_speed = 'V<2'
+    elif 2 <= wind_speed_r <= 3.9:
+        wind_speed = '2<=V<=3.9'
+    elif wind_speed_r > 4:
+        wind_speed = 'V>4'
+
+    if time_of_day not in ['morning', 'night', 'day', 'evening']:
+        return None
+
+    dovsoa_list = [
+        {'wind_speed': 'V<2', 'snow': False, 'cloudiness': False,
+         'night':'ин', 'morning': 'из', 'day': 'к', 'evening':'ин'},
+        {'wind_speed': 'V<2', 'snow': True, 'cloudiness': True,
+         'night': 'из', 'morning': 'из', 'day': 'из', 'evening': 'из'},
+        {'wind_speed': 'V<2', 'snow': True, 'cloudiness': False,
+         'night': 'ин', 'morning': 'ин', 'day': 'из', 'evening': 'ин'},
+        {'wind_speed': 'V<2', 'snow': False, 'cloudiness': True,
+         'night': 'из', 'morning': 'из', 'day': 'из', 'evening': 'из'},
+
+        {'wind_speed': '2<=V<=3.9', 'snow': False, 'cloudiness': False,
+         'night':'ин', 'morning': 'из', 'day': 'из', 'evening': 'из'},
+        {'wind_speed': '2<=V<=3.9', 'snow': True, 'cloudiness': True,
+         'night': 'из', 'morning': 'из', 'day': 'из', 'evening': 'из'},
+        {'wind_speed': '2<=V<=3.9', 'snow': True, 'cloudiness': False,
+         'night': 'ин', 'morning': 'ин', 'day': 'из', 'evening': 'ин'},
+        {'wind_speed': '2<=V<=3.9', 'snow': False, 'cloudiness': True,
+         'night': 'из', 'morning': 'из', 'day': 'из', 'evening': 'из'},
+
+        {'wind_speed': 'V>4', 'snow': False, 'cloudiness':False,
+         'night':'из', 'morning': 'из', 'day': 'из', 'evening':'из'},
+        {'wind_speed': 'V>4', 'snow': True, 'cloudiness': True,
+         'night': 'из', 'morning': 'из', 'day': 'из', 'evening': 'из'},
+        {'wind_speed': 'V>4', 'snow': True, 'cloudiness': False,
+         'night': 'из', 'morning': 'из', 'day': 'из', 'evening': 'из'},
+        {'wind_speed': 'V>4', 'snow': False, 'cloudiness': True,
+         'night': 'из', 'morning': 'из', 'day': 'из', 'evening': 'из'},
+     ]
+
+    return [x[time_of_day] for x in dovsoa_list if x['snow'] == snow and
+            x['wind_speed'] == wind_speed and x['cloudiness'] == cloudiness]
+
 
 print('timedelta: %s' % (sun['sunrise'] + timedelta(hours=2)).replace(tzinfo=None))
 print(dt)
 print(dt - sun['sunrise'].replace(tzinfo=None))
 print('time of day: %s' % time_of_day(dt, 'Moscow'))
+
+print(get_dovsoa(1, 'day', cloudiness=False, snow=False))
+print(get_k7([0.1, 0.2, 0.1, 1, 2.2], 35))
 
 # Под термином «утро» понимается период времени в течение 2 ч после восхода солнца
 # под термином «вечер» - в течение 2 ч после захода солнца
