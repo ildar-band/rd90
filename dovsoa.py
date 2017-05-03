@@ -63,17 +63,15 @@ def time_of_day(dt, city_name):
     elif dt >= start_earth_day:
         return 'night'
 
-def get_k4(wind_speed):
-    i = (math.ceil(wind_speed))
-    k4 = [1, 1.33, 1.67, 2.0, 2.34, 2.67, 3.0, 3.34, 3.67, 4.0, 5.68]
-    return k4[i-1]
+
+
+
 
 
 # val_list, air_t
 def get_k7(val_list, air_t):
     value_list = list(zip([-40, -20, 0, 20, 40], eval(val_list)))
     return sympy.interpolate(value_list, air_t)
-
 
 
 # Определение степени вертикальной устойчивости воздуха по прогнозу погоды
