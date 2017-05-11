@@ -62,10 +62,10 @@ def get_xslx_str_K1237_to_db(params_line_from_file):
     return dict(zip(get_peewee_fields(K1237), values))
 
 if __name__ == '__main__':
-
+    k1237 = K1237.get(K1237.id == 1)
     # db.create_tables([K1237], safe=True)
-    print(K1237._meta.fields)
-    print(K1237.__class__.__name__)
+    print(k1237._meta.fields)
+    print(k1237.__class__.__name__)
     # params_list = list_from_xlsx('files/tab p2.xlsx')
     # params_source = [get_str_K1237(row) for row in params_list]
     # print(params_source)

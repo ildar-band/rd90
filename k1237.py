@@ -18,6 +18,9 @@ class K1237(Model):
     k7_2 = CharField(null=True) #  '[0.1, 0.2, 0.1, 1, 2.2]'  - вторичное облако
     k7_2_f = CharField(null=True)  # intorpolite formula
 
+
+
+
     class Meta:
         database = db
 

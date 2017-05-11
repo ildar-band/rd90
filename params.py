@@ -3,160 +3,136 @@ import sympy
 # db_dovsoa = SqliteDatabase('files/dovsoa.db')
 from playhouse.reflection import *
 import re
-
+from k1237 import *
 import math
-import k1237
+import numpy
+from datetime import datetime, date, timedelta
 
 
-def get_k1(k1237):
-    # К1 - коэффициент, зависящий от условий хранения АХОВ, для сжатых газов К1 = 1
-    # Значения К1 для изотермического хранения аммиака приведено для случая разлива (выброса) в поддон.
-    return 1 if k1237.gas_density else k1237.k1
+class Coeff:
+    k1237 = ''  # таблица коэффициентов и характеристик АХОВ П2
+    k1 = ''     # К1 - коэффициент, зависящий от условий хранения АХОВ, для сжатых газов К1 = 1
+    # значения К1 для изотермического хранения аммиака приведено для случая разлива (выброса) в поддон.
+    k2 = ''     # K2 -коэффициент, зависящий от физико-химических свойств АХОВ, удельная скорость испарения
+    k3 = ''     # K3 - коэффициент, равный отношению пороговой токсодозы хлора к пороговой токсодозе другого АХОВ
+    k4 = ''     # K4 - коэффициент, учитывающий скорость ветра
+    k5 = ''     # K5 - коэффициент, учитывающий степень вертикальной устойчивости атмосферы
+    k6 = ''     # K6 - коэффициент, зависящий от времени N, прошедшего после начала аварии;
+    k7 = ''     # K7 - коэффициент, учитывающий влияние температуры воздуха
+
+    density = '' # плотность АХОВ, плотности газообразных СДЯВ gas_density приведены для атмосферного давления; при давлении в емкости,
+    # отличном от атмосферного, плотности определяются путем умножения данных графы 3 на значение
+    # давления в атмосферах (1 атм = 760 мм рт. ст.).
+    pallet_height = '' # глубина поддона. При проливе в поддон или обваловку
+    layer_thickness = '' # толщина слоя разлившегося АХОВ
+     # высота обваловки
+
+    def __init__(self, hcs_id, wind_speed, dovsoa, air_t, crash_time, estimated_time, hcs_storage='gas_under_pressure',
+                 cloud=1, spillage='free', embank_height=0, atmospheric_pressure=1):
+        self.k1237 = K1237.get(K1237.id == hcs_id)
+        self.k1 = self.get_k1(hcs_storage)
+        self.k2 = self.k1237.k2
+        self.k3 = self.k1237.k3
+        self.k4 = self.get_k4(wind_speed)
+        self.k5 = self.get_k5(dovsoa)
+        self.k7 = self.get_k7(air_t, cloud, hcs_storage)
+        self.density = self.get_density(atmospheric_pressure, hcs_storage)
+        self.layer_thickness = self.get_layer_thickness(spillage, embank_height)
+        self.k6 = self.get_k6(crash_time, estimated_time)
+
+    def get_k1(self, hcs_storage):
+        # hcs - hazardous chemical substance
+        # hcs_storage - 'gas_under_pressure' || 'no_pressure'
+        # К1 - коэффициент, зависящий от условий хранения АХОВ, для сжатых газов К1 = 1
+        # Значения К1 для изотермического хранения аммиака приведено для случая разлива (выброса) в поддон.
+        # для сжатых газов К1 = 1
+        k1 = self.k1237.k1
+        if hcs_storage == 'gas_under_pressure':
+            k1 = 1
+        return k1
+
+    def get_k4(self, wind_speed):
+        x = (math.ceil(wind_speed))
+        k4 = numpy.interp(x, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15],
+                          [1, 1.33, 1.67, 2.0, 2.34, 2.67, 3.0, 3.34, 3.67, 4.0, 5.68])
+        return k4
+
+    def get_k5(self, dovsoa):
+        # коэффициент, учитывающий степень вертикальной устойчивости воздуха
+        if dovsoa == 'ин':
+            return 1
+        if dovsoa == 'из':
+            return 0.23
+        if dovsoa == 'к':
+            return 0.08
+
+    def get_k6(self, crash_time, estimated_time):
+        # К6 - коэффициент, зависящий от времени after_crash_time, прошедшего после начала аварии;
+        # значение коэффициента К6 определяется после расчета продолжительности evaporation_duration (ч) испарения вещества
+        # after_crash_time - время, прошедшее после начала аварии
+        # evaporation duration  - продолжительность испарения вещества
+        evaporation_duration = round((self.layer_thickness * self.density / self.k2 * self.k4 * self.k7), 1)
+        evaporation_delta =  timedelta(hours=evaporation_duration)
+        delta = timedelta(hours=1)
+        after_crash_time = estimated_time - crash_time
+        #  h - высота слоя разлившегося АХОВ
+        if after_crash_time < delta:
+            k6 = 1
+        if after_crash_time < evaporation_delta:
+            k6 = evaporation_duration ** 0.8
+        if after_crash_time >= evaporation_delta:
+            k6 = evaporation_duration ** 0.8
+        return k6
+
+    def get_layer_thickness(self, spillage, embank_height):
+        """
+        Толщина h слоя жидкости для АХОВ, разлившихся свободно на подстилающей поверхности,
+        принимается равной 0,05 м по всей площади разлива; для СДЯВ, разлившихся в поддон или обваловку,
+        определяется следующим образом:
+        а) при разливах из емкостей, имеющих самостоятельный поддон (обваловку): h = H - 0,2,
+        где H - высота поддона (обваловки), м;
+
+        :param spillage:
+        :param embank_height:
+        :return:
+        """
+        if spillage=='pallet':
+            layer_thickness = embank_height - 0.2
+        if spillage=='free':
+            layer_thickness = 0.05
+        return layer_thickness
+
+    def get_k7(self, air_t, cloud=1, hcs_storage='gas_no_pressure'):
+        # cloud = 1, 2 - первичное, вторичное облако
+        # коэффициент, учитывающий влияние температуры воздуха ; для сжатых газов К7 = 1;
+        # value_list = list(zip([-40, -20, 0, 20, 40], eval(val_list)))
+        x = float(air_t)
+        if hcs_storage == 'gas_under_pressure':
+            return 1
+        if cloud == 1:
+            # print(self.k1237.k7_1_f)
+            k7 = eval(self.k1237.k7_1_f)
+        elif cloud == 2:
+            k7 = eval(self.k1237.k7_2_f)
+        else:
+            return None
+        return k7
+
+    def get_density(self, atmospheric_pressure, hcs_storage):
+        # Плотности газообразных СДЯВ gas_density приведены для атмосферного давления; при давлении в емкости,
+        # отличном от атмосферного, плотности определяются путем умножения данных графы 3 на значение
+        # давления в атмосферах (1 атм = 760 мм рт. ст.).
+        if hcs_storage == 'liquid':
+            return float(self.k1237.liquid_density) * float(atmospheric_pressure)
+        else:
+            if self.k1237.gas_density:
+                return float(self.k1237.gas_density) * float(atmospheric_pressure)
 
 
 def get_substance_mount(substance_mount, k1237):
     # При авариях на хранилищах сжатого газа - substance_mount - это объем хранилища
     # При авариях на хранилищах сжатого газа Q0 рассчитывается по формуле Q0 = d*Vх
     return substance_mount * k1237.gas_density if k1237.gas_density else substance_mount
-
-
-def get_k3(hcs_id, K1237):
-    # коэффициент, равный отношению пороговой токсодозы хлора к пороговой токсодозе другого АХОВ
-    k3 = K1237.get(K1237.hcs_id == hcs_id).k3
-    return k3
-
-
-k4_list = list(zip([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15], [1, 1.33, 1.67, 2.0, 2.34, 2.67, 3.0, 3.34, 3.67, 4.0, 5.68]))
-interpol_k4_func = sympy.interpolate(k4_list, x)
-
-def get_k4(wind_speed, func):
-    x = (math.ceil(wind_speed))
-    # interpol_k4_func = sympy.interpolate(k4_list, x)
-    # k4 = [1, 1.33, 1.67, 2.0, 2.34, 2.67, 3.0, 3.34, 3.67, 4.0, 5.68]
-    return k4[i-1]
-
-
-def get_k5(dovsoa):
-    # коэффициент, учитывающий степень вертикальной устойчивости воздуха
-    if dovsoa == 'ин':
-        return 1
-    if dovsoa == 'из':
-        return 0.23
-    if dovsoa == 'к':
-        return 0.08
-
-
-# коэффициент, учитывающий влияние температуры воздуха ; для сжатых газов К7 = 1;
-def get_k7(k1237, air_t, cloud =1):
-    # value_list = list(zip([-40, -20, 0, 20, 40], eval(val_list)))
-    x = float(air_t)
-    if cloud == 1:
-        # print(k1237.k7_1_f)
-        k7 = eval(k1237.k7_1_f)
-    elif cloud == 2:
-        k7 = eval(k1237.k7_1_f)
-    else:
-       return None
-    return k7
-
-
-def get_density(atmospheric_pressure=1):
-    # Плотности газообразных СДЯВ gas_density приведены для атмосферного давления; при давлении в емкости,
-    # отличном от атмосферного, плотности определяются путем умножения данных графы 3 на значение
-    # давления в атмосферах (1 атм = 760 мм рт. ст.).
-    pass
-
-
-def get_k1(hcs_id, K1237, hcs_storage='no_pressure'):
-    # hcs - hazardous chemical substance
-    # hcs_storage - 'gas_under_pressure' || 'no_pressure'
-    # К1 - коэффициент, зависящий от условий хранения АХОВ, для сжатых газов К1 = 1
-    # Значения К1 для изотермического хранения аммиака приведено для случая разлива (выброса) в поддон.
-    # для сжатых газов К1 = 1
-    k1 = K1237.get(K1237.hcs_id == hcs_id).k1
-    if hcs_storage == 'gas_under_pressure':
-        k1 = 1
-    return k1
-
-def get_k3(hcs_id, K1237):
-    # коэффициент, равный отношению пороговой токсодозы хлора к пороговой токсодозе другого АХОВ
-    k3 = K1237.get(K1237.hcs_id == hcs_id).k3
-    return k3
-
-
-def get_k4(wind_speed):
-    i = (math.ceil(wind_speed))
-    k4 = [1, 1.33, 1.67, 2.0, 2.34, 2.67, 3.0, 3.34, 3.67, 4.0, 5.68]
-    return k4[i-1]
-
-
-def get_k5(dovsoa):
-    # коэффициент, учитывающий степень вертикальной устойчивости воздуха
-    if dovsoa == 'ин':
-        return 1
-    if dovsoa == 'и3':
-        return 0.23
-    if dovsoa == 'к':
-        return 0.08
-
-
-def get_density(atmospheric_pressure=1):
-    # Плотности газообразных СДЯВ gas_density приведены для атмосферного давления; при давлении в емкости,
-    # отличном от атмосферного, плотности определяются путем умножения данных графы 3 на значение
-    # давления в атмосферах (1 атм = 760 мм рт. ст.).
-    pass
-
-
-
-
-
-# introspector = Introspector.from_database(db)
-# models = introspector.generate_models()
-#
-
-# kn = models['k1237']
-
-# for field in K1237._meta.fields:
-#     if K1237._meta.fields[field].__class__.__name__ != 'PrimaryKeyField':
-#         print(field)
-
-# print([field for field in K1237._meta.fields if K1237._meta.fields[field].__class__.__name__ != 'PrimaryKeyField'])
-
-# print(isinstance(K1237, BaseModel))
-
-        
-# print()
-#
-# print(get_peewee_fields(K1237))
-
-
-
-
-
-
-
-
-# aaaa = ['Аммиак хранение под давлением (NH3)', '0.0008', '0.681', '-33.42', '15', '0.18', '0.025', '0.04', '0 0.9', '01 1',
-#      '06 1', '1 1', '14 1']
-# bbb = ['Акролеин (H2C)', '-', '0.839', '52.7', '0.2', '0', '0.013', '3', '0.1', '0.2', '0.1', '1', '2.2']
-
-
-
-# Акролеин (H2C) - 0,839 52,7 0,2 0 0,013 3 0,1 0,2 0,1 1 2,2
-
-# zip(s,t)
-# data_source = [
-#     {'field1': 'val1-1', 'field2': 'val1-2'},
-#     {'field1': 'val2-1', 'field2': 'val2-2'},
-#     # ...
-# ]
-
-# for data_dict in data_source:
-#     Model.create(**data_dict)
-
-
-
-
 
 if __name__ == '__main__':
 
@@ -169,7 +145,8 @@ if __name__ == '__main__':
     # k2 = K1237.get(K1237.id==1).k2
     k1237 = K1237.get(K1237.id == 1)
     print(k1237.k2, k1237.k3)
-    # aa = {'hcs_name': 'Этилмеркаптан', 'hcs_form': '(C2H5SH)', 'gas_density': None, 'liquid_density': 0.839, 'boiling_t': 35.0, 'toxodeth': 2.2, 'k1': 0.0, 'k2': 0.028, 'k3': 0.27, 'k7_1': '[0.1, 0.2, 0.5, 1.0, 1.7]', 'k7_1_f': '-1.85288457211878e-22*x**4 - 1.6940658945086e-21*x**3 + 0.00025*x**2 + 0.02*x + 0.5', 'k7_2': None, 'k7_2_f': None}
+
+    # print('k4 %s:' % get_k4(13))
 
     # with db.atomic():
     #     K1237.insert_many(params_source).execute()
