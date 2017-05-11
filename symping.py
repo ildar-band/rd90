@@ -19,6 +19,7 @@ print(sympy.interpolate(value_list2, 7.0))
 
 
 k4 = list(zip([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15], [1, 1.33, 1.67, 2.0, 2.34, 2.67, 3.0, 3.34, 3.67, 4.0, 5.68]))
+
 x = 12
 int_k4 = sympy.interpolate(k4, x)
 
@@ -27,6 +28,9 @@ print('k4 %s' % int_k4)
 k5 = list(zip([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15], [0.38, 0.26, 0.22, 0.19, 0.17, 0.15, 0.14, 0.13, 0.12, 0.12, 0.11, 0.11, 0.10, 0.10, 0.10]))
 print(sympy.interpolate(k5, 3.5))
 
+
+
+print(sympy.interpolate(k4, 2))
 
 
 def equivalent_amount_1():

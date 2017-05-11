@@ -3,6 +3,7 @@ import sympy
 # db_dovsoa = SqliteDatabase('files/dovsoa.db')
 from playhouse.reflection import *
 import re
+
 import math
 import k1237
 
@@ -66,6 +67,49 @@ def get_density(atmospheric_pressure=1):
     pass
 
 
+def get_k1(hcs_id, K1237, hcs_storage='no_pressure'):
+    # hcs - hazardous chemical substance
+    # hcs_storage - 'gas_under_pressure' || 'no_pressure'
+    # К1 - коэффициент, зависящий от условий хранения АХОВ, для сжатых газов К1 = 1
+    # Значения К1 для изотермического хранения аммиака приведено для случая разлива (выброса) в поддон.
+    # для сжатых газов К1 = 1
+    k1 = K1237.get(K1237.hcs_id == hcs_id).k1
+    if hcs_storage == 'gas_under_pressure':
+        k1 = 1
+    return k1
+
+def get_k3(hcs_id, K1237):
+    # коэффициент, равный отношению пороговой токсодозы хлора к пороговой токсодозе другого АХОВ
+    k3 = K1237.get(K1237.hcs_id == hcs_id).k3
+    return k3
+
+
+def get_k4(wind_speed):
+    i = (math.ceil(wind_speed))
+    k4 = [1, 1.33, 1.67, 2.0, 2.34, 2.67, 3.0, 3.34, 3.67, 4.0, 5.68]
+    return k4[i-1]
+
+
+def get_k5(dovsoa):
+    # коэффициент, учитывающий степень вертикальной устойчивости воздуха
+    if dovsoa == 'ин':
+        return 1
+    if dovsoa == 'и3':
+        return 0.23
+    if dovsoa == 'к':
+        return 0.08
+
+
+def get_density(atmospheric_pressure=1):
+    # Плотности газообразных СДЯВ gas_density приведены для атмосферного давления; при давлении в емкости,
+    # отличном от атмосферного, плотности определяются путем умножения данных графы 3 на значение
+    # давления в атмосферах (1 атм = 760 мм рт. ст.).
+    pass
+
+
+
+
+
 # introspector = Introspector.from_database(db)
 # models = introspector.generate_models()
 #
@@ -84,6 +128,7 @@ def get_density(atmospheric_pressure=1):
 # print()
 #
 # print(get_peewee_fields(K1237))
+
 
 
 

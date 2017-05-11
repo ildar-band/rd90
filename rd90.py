@@ -1,4 +1,5 @@
 from k1237 import *
+
 from params import *
 from dovsoa import *
 
@@ -42,3 +43,10 @@ if __name__ == '__main__':
 
 
     # 3. Определение эквивалентного количества вещества во вторичном облаке
+
+
+
+
+
+
+

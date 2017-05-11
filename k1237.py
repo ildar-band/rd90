@@ -1,6 +1,4 @@
 from peewee import *
-
-
 db = SqliteDatabase('files/k1237.db')
 db.connect()
 
