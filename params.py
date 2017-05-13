@@ -28,7 +28,7 @@ class Coeff:
      # высота обваловки
 
     def __init__(self, hcs_id, wind_speed, dovsoa, air_t, crash_time, estimated_time, hcs_storage='gas_under_pressure',
-                 cloud=1, spillage='free', embank_height=0, atmospheric_pressure=1):
+                 cloud=1, spillage='free_spillage', embank_height=0, atmospheric_pressure=1):
         self.k1237 = K1237.get(K1237.id == hcs_id)
         self.k1 = self.get_k1(hcs_storage)
         self.k2 = self.k1237.k2
@@ -72,35 +72,18 @@ class Coeff:
         # after_crash_time - время, прошедшее после начала аварии
         # evaporation duration  - продолжительность испарения вещества
         evaporation_duration = round((self.layer_thickness * self.density / self.k2 * self.k4 * self.k7), 1)
-        evaporation_delta =  timedelta(hours=evaporation_duration)
+        evaporation_delta = timedelta(hours=evaporation_duration)
         delta = timedelta(hours=1)
         after_crash_time = estimated_time - crash_time
         #  h - высота слоя разлившегося АХОВ
         if after_crash_time < delta:
             k6 = 1
         if after_crash_time < evaporation_delta:
-            k6 = evaporation_duration ** 0.8
+            after_crash_time_f = after_crash_time.seconds / 3600
+            k6 = after_crash_time_f ** 0.8
         if after_crash_time >= evaporation_delta:
             k6 = evaporation_duration ** 0.8
         return k6
-
-    def get_layer_thickness(self, spillage, embank_height):
-        """
-        Толщина h слоя жидкости для АХОВ, разлившихся свободно на подстилающей поверхности,
-        принимается равной 0,05 м по всей площади разлива; для СДЯВ, разлившихся в поддон или обваловку,
-        определяется следующим образом:
-        а) при разливах из емкостей, имеющих самостоятельный поддон (обваловку): h = H - 0,2,
-        где H - высота поддона (обваловки), м;
-
-        :param spillage:
-        :param embank_height:
-        :return:
-        """
-        if spillage=='pallet':
-            layer_thickness = embank_height - 0.2
-        if spillage=='free':
-            layer_thickness = 0.05
-        return layer_thickness
 
     def get_k7(self, air_t, cloud=1, hcs_storage='gas_no_pressure'):
         # cloud = 1, 2 - первичное, вторичное облако
@@ -113,7 +96,10 @@ class Coeff:
             # print(self.k1237.k7_1_f)
             k7 = eval(self.k1237.k7_1_f)
         elif cloud == 2:
-            k7 = eval(self.k1237.k7_2_f)
+            if self.k1237.k7_2:
+                k7 = eval(self.k1237.k7_2_f)
+            else:
+                k7 = eval(self.k1237.k7_1_f)
         else:
             return None
         return k7
@@ -128,11 +114,33 @@ class Coeff:
             if self.k1237.gas_density:
                 return float(self.k1237.gas_density) * float(atmospheric_pressure)
 
+    def get_layer_thickness(self, spillage, embank_height = 0):
+        """
+        Толщина h слоя жидкости для АХОВ, разлившихся свободно на подстилающей поверхности,
+        принимается равной 0,05 м по всей площади разлива; для СДЯВ, разлившихся в поддон или обваловку,
+        определяется следующим образом:
+        а) при разливах из емкостей, имеющих самостоятельный поддон (обваловку): h = H - 0,2,
+        где H - высота поддона (обваловки), м;
+
+        :param spillage:
+        :param embank_height:
+        :return:
+        """
+        if spillage=='pallet_spillage':
+            layer_thickness = embank_height - 0.2
+        if spillage=='free_spillage':
+            layer_thickness = 0.05
+        return layer_thickness
+
 
 def get_substance_mount(substance_mount, k1237):
     # При авариях на хранилищах сжатого газа - substance_mount - это объем хранилища
     # При авариях на хранилищах сжатого газа Q0 рассчитывается по формуле Q0 = d*Vх
     return substance_mount * k1237.gas_density if k1237.gas_density else substance_mount
+
+
+
+
 
 if __name__ == '__main__':
 

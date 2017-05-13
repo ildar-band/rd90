@@ -147,7 +147,7 @@ def get_dovsoa(wind_speed, time_of_day, cloudiness=False, snow=False):
          'night': 'из', 'morning': 'из', 'day': 'из', 'evening': 'из'},
      ]
     return [x[time_of_day] for x in dovsoa_list if x['snow'] == snow and
-            x['wind_speed'] == wind_speed and x['cloudiness'] == cloudiness]
+            x['wind_speed'] == wind_speed and x['cloudiness'] == cloudiness][0]
 
 
 # print('timedelta: %s' % (sun['sunrise'] + timedelta(hours=2)).replace(tzinfo=None))
