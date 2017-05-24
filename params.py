@@ -25,9 +25,10 @@ class Coeff:
     # давления в атмосферах (1 атм = 760 мм рт. ст.).
     pallet_height = '' # глубина поддона. При проливе в поддон или обваловку
     layer_thickness = '' # толщина слоя разлившегося АХОВ
+    evaporation_duration = 0 # продолжительность испарения АХОВ int
      # высота обваловки
 
-    def __init__(self, hcs_id, wind_speed, dovsoa, air_t, crash_time, estimated_time, hcs_storage='gas_under_pressure',
+    def __init__(self, hcs_id, wind_speed, dovsoa, air_t, after_crash_time, hcs_storage='gas_under_pressure',
                  cloud=1, spillage='free_spillage', embank_height=0, atmospheric_pressure=1):
         self.k1237 = K1237.get(K1237.id == hcs_id)
         self.k1 = self.get_k1(hcs_storage)
@@ -38,7 +39,7 @@ class Coeff:
         self.k7 = self.get_k7(air_t, cloud, hcs_storage)
         self.density = self.get_density(atmospheric_pressure, hcs_storage)
         self.layer_thickness = self.get_layer_thickness(spillage, embank_height)
-        self.k6 = self.get_k6(crash_time, estimated_time)
+        self.k6 = self.get_k6(after_crash_time)
 
     def get_k1(self, hcs_storage):
         # hcs - hazardous chemical substance
@@ -66,15 +67,16 @@ class Coeff:
         if dovsoa == 'к':
             return 0.08
 
-    def get_k6(self, crash_time, estimated_time):
+    def get_k6(self, after_crash_time):
         # К6 - коэффициент, зависящий от времени after_crash_time, прошедшего после начала аварии;
         # значение коэффициента К6 определяется после расчета продолжительности evaporation_duration (ч) испарения вещества
         # after_crash_time - время, прошедшее после начала аварии
         # evaporation duration  - продолжительность испарения вещества
-        evaporation_duration = round((self.layer_thickness * self.density / self.k2 * self.k4 * self.k7), 1)
-        evaporation_delta = timedelta(hours=evaporation_duration)
+        self.evaporation_duration = round((self.layer_thickness * self.density / (self.k2 * self.k4 * self.k7)), 3)
+        evaporation_delta = timedelta(hours=self.evaporation_duration)
+
         delta = timedelta(hours=1)
-        after_crash_time = estimated_time - crash_time
+
         #  h - высота слоя разлившегося АХОВ
         if after_crash_time < delta:
             k6 = 1
@@ -82,8 +84,9 @@ class Coeff:
             after_crash_time_f = after_crash_time.seconds / 3600
             k6 = after_crash_time_f ** 0.8
         if after_crash_time >= evaporation_delta:
-            k6 = evaporation_duration ** 0.8
+            k6 = self.evaporation_duration ** 0.8
         return k6
+
 
     def get_k7(self, air_t, cloud=1, hcs_storage='gas_no_pressure'):
         # cloud = 1, 2 - первичное, вторичное облако
