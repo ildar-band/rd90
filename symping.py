@@ -1,5 +1,22 @@
 import sympy
+import pandas as pd
+import numpy as np
+import scipy.interpolate
+import math
+
+# x = np.arange(0, 4, 1)
+
+
+# y = np.arange(0, 4, 1)
+# xx, yy = np.meshgrid(x, y)
+# z = xx*2+yy
+
+
+
+
 x = sympy.symbols('x')
+
+
 
 
 value_list = list(zip([-40, -20, 0, 20, 40], [0.1, 0.2, 0.1, 1, 2.2]))
@@ -35,3 +52,5 @@ print(sympy.interpolate(k4, 2))
 
 def equivalent_amount_1():
     pass
+
+
