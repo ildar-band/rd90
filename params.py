@@ -28,7 +28,7 @@ class Coeff:
     evaporation_duration = 0 # продолжительность испарения АХОВ int
      # высота обваловки
 
-    def __init__(self, hcs_id, wind_speed, dovsoa, air_t, delta_crash_time, hcs_storage='gas_under_pressure',
+    def __init__(self, hcs_id, wind_speed, dovsoa, air_t, after_crash_time, hcs_storage='gas_under_pressure',
                  cloud=1, spillage='free_spillage', embank_height=0, atmospheric_pressure=1):
         self.k1237 = K1237.get(K1237.id == hcs_id)
         self.k1 = self.get_k1(hcs_storage)
@@ -39,7 +39,8 @@ class Coeff:
         self.k7 = self.get_k7(air_t, cloud, hcs_storage)
         self.density = self.get_density(atmospheric_pressure, hcs_storage)
         self.layer_thickness = self.get_layer_thickness(spillage, embank_height)
-        self.k6 = self.get_k6(delta_crash_time)
+        self.k6 = self.get_k6(after_crash_time)
+
 
     def get_k1(self, hcs_storage):
         # hcs - hazardous chemical substance
