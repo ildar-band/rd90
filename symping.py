@@ -2,6 +2,7 @@ import sympy
 import pandas as pd
 import numpy as np
 import scipy.interpolate
+from scipy.interpolate import interp1d
 import math
 
 # x = np.arange(0, 4, 1)
@@ -23,8 +24,9 @@ value_list = list(zip([-40, -20, 0, 20, 40], [0.1, 0.2, 0.1, 1, 2.2]))
 # print(sympy.interpolate(value_list, x))
 
 print(list(zip([-40, -20, 0, 20, 40], [0.1, 0.2, 0.1, 1, 2.2])))
-print(sympy.interpolate(value_list, 19))
-
+print(sympy.interpolate(value_list, -42))
+ff = interp1d([-40, -20, 0, 20, 40], [0.1, 0.2, 0.1, 1, 2.2])
+print(ff(-39))
 
 
 value_list1 = list(zip([0.38, 0.85, 1.25, 3.16, 4.75, 9.18, 12.53, 19.20, 29.56], [0.01, 0.05, 0.1, 0.5, 1, 3, 5, 10, 20]))
