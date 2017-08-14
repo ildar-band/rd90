@@ -122,6 +122,8 @@ def get_actual_contamination_area(contamination_depth, dovsoa, after_crash_time)
 print('скорость переноса переднего фронта %s' % get_front_speed(16,  'из'))
 
 
+#TODO написать функцию определения возможных потерь среди населения в зоне заражения АХОВ (Таблица П7)
+
 if __name__ == '__main__':
     # 1. Определение степени вертикальной устойчивости воздуха по метеоинформации
     crash_time = time(2, 30)  # Время
@@ -135,12 +137,15 @@ if __name__ == '__main__':
     after_crash_time = estimated_dtime - crash_dtime
 
 
-    # dovsoa = get_dovsoa(11, time_of_day)
-    # air_t = 20  # температура воздуха
-    # q = 12  # количество выброшенного (разлившегося) при аварии вещества, т
-    # wind_speed = 2  # скорость ветра
-    # hcs_id = 30  # id вещества
-    # hcs_storage = 'liquid'  # условия хранения АХОВ
+
+    air_t = 20  # температура воздуха
+    q = 12  # количество выброшенного (разлившегося) при аварии вещества, т
+    wind_speed = 2  # скорость ветра
+    dovsoa = get_dovsoa(wind_speed, time_of_day)
+    hcs_id = 30  # id вещества
+    hcs_storage = 'liquid'  # условия хранения АХОВ
+
+
     #
     # json_args = {
     #
@@ -149,7 +154,7 @@ if __name__ == '__main__':
 
 
 
-    K1237 = Coeff(1, 10, dovsoa, air_t, dtime_after_crash - dtime_crash, 'liquid')
+    # K1237 = Coeff(1, 10, dovsoa, air_t, dtime_after_crash - dtime_crash, 'liquid')
 
 
     # cloud_1_coef = Coeff(1, 2, dovsoa, air_t, dt, datetime(2017,4,19,8,30), 'liquid', 1)
@@ -178,29 +183,12 @@ if __name__ == '__main__':
       % depth)
 
     possible_contamination = get_possible_contamination_area(depth, wind_speed)
-    print("4. Площадь зоены возможного заражения АХОВ: \n%s"
+    print("6. Площадь зоны возможного заражения АХОВ: \n%s"
       % possible_contamination)
 
     actual_contamination = get_actual_contamination_area(depth, dovsoa, after_crash_time.total_seconds()/3600)
-    print("4. Площадь зоены фактического заражения АХОВ: \n%s"
+    print("7. Площадь зоны фактического заражения АХОВ: \n%s"
       % actual_contamination)
-    # equivalent_amount_1(k1237, dovsoa, air_t, q)
-
-    # k4 = get_k4(5)
-    # print(k4)
-
-    # 3. Определение эквивалентного количества вещества в первичном облаке
-    Qe1 = K1237.k1 * K1237.k3 * K1237.k5 * K1237.k7 * q
-    print(Qe1)
-
-
-    # 4. Определение эквивалентного количества вещества во вторичном облаке
-    # Толщина слоя разлившейся жидкости h = 0.05 м при отсутствии поддона или обваловки
-    # h = H - 0.2, где H - высота поддона/обваловки
-    # продолжительность метеоусловий состаляет 4 часа
-    h = 0.05
-    Qe2 = (1 - K1237.k1) * K1237.k2 * K1237.k3 * K1237.k4 * K1237.k5 * K1237.k6 * K1237.k7 * q/(h*K1237.density)
-    print(Qe2)
 
     # 5. Расчет глубины зоны заражения при аварии на ХОО
 

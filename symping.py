@@ -25,8 +25,27 @@ value_list = list(zip([-40, -20, 0, 20, 40], [0.1, 0.2, 0.1, 1, 2.2]))
 
 print(list(zip([-40, -20, 0, 20, 40], [0.1, 0.2, 0.1, 1, 2.2])))
 print(sympy.interpolate(value_list, -42))
-ff = interp1d([-40, -20, 0, 20, 40], [0.1, 0.2, 0.1, 1, 2.2])
-print(ff(-39))
+# ff = interp1d([-40, -20, 0, 20, 40], [0.1, 0.2, 0.1, 1, 2.2])
+# print(ff(-39))
+
+
+def get_k7(val_list, air_t):
+    inter_func = interp1d([-40, -20, 0, 20, 40], val_list)
+    val_list = dict(zip([-40, -20, 0, 20, 40], val_list))
+    if (air_t < -40):
+        return val_list[-40]
+    if (air_t > 40):
+        return val_list[40]
+    return inter_func(air_t)
+airt = 10
+print('interp1d k7 при %s град: %s' % (airt, get_k7([0.1, 0.2, 0.1, 1, 2.2], airt)))
+
+
+x = sympy.symbols('x')
+y = sympy.interpolate(list(zip([-40, -20, 0, 20, 40], [0.1, 0.2, 0.1, 1, 2.2])), airt)
+# x = airt
+# y = k7_1_f
+print('sympy.interpolate k7 при %s град: %s' % (airt, y))
 
 
 value_list1 = list(zip([0.38, 0.85, 1.25, 3.16, 4.75, 9.18, 12.53, 19.20, 29.56], [0.01, 0.05, 0.1, 0.5, 1, 3, 5, 10, 20]))
