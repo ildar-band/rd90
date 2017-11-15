@@ -2,15 +2,11 @@ from k1237 import *
 from params import *
 from dovsoa import *
 from datetime import datetime, date, timedelta
+from meteo_info import get_meteo_info_parse
 import scipy.interpolate
 import math
 
-k1237 = K1237.get(K1237.id == 1)
-
-
-
-# Определение эквивалентного количества вещества в первичном облаке
-
+#k1237 = K1237.get(K1237.id == 1)
 
 def equivalent_amount_1(coef, substance_mount):
     # Определение эквивалентного количества вещества в первичном облаке Qэ1 = К1 К3 К5 К7 Q0
@@ -27,7 +23,7 @@ def contamination_depth(equivalent_amount, wind_speed):
     '''
     :param equivalent_amount:
     :param wind_speed:
-    :return:
+    :return: contamination depth
     '''
     x = [0.01, 0.05, 0.1, 0.5, 1, 3, 5, 10, 20, 30, 50, 70, 100, 300, 500, 700, 1000, 2000]
     y = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
@@ -111,7 +107,7 @@ def get_actual_contamination_area(contamination_depth, dovsoa, after_crash_time)
     :param contamination_depth:
     :param dovsoa:
     :param after_crash_time:
-    :return: площадь зоны возможного заражения АХОВ
+    :return: площадь зоны фактического заражения АХОВ
     '''
     k8_list = {'ин': 0.081, 'из': 0.133, 'к': 0.235}
     actual_contamination_area = k8_list[dovsoa] * contamination_depth ** 2 * after_crash_time ** 0.2
@@ -132,13 +128,14 @@ if __name__ == '__main__':
     estimated_dtime = datetime(2017, 4, 19, 3, 30)
     after_crash_time = estimated_dtime - crash_dtime
 
+    meteo_info_now = get_meteo_info_parse()
+    wind_speed = 2  # скорость ветра
+    dovsoa = get_dovsoa(wind_speed, time_of_day)
+    air_t = 20  # температура воздуха
+    q = 12  # количество выброшенного (разлившегося) при аварии вещества, т
 
-    # dovsoa = get_dovsoa(11, time_of_day)
-    # air_t = 20  # температура воздуха
-    # q = 12  # количество выброшенного (разлившегося) при аварии вещества, т
-    # wind_speed = 2  # скорость ветра
-    # hcs_id = 30  # id вещества
-    # hcs_storage = 'liquid'  # условия хранения АХОВ
+    hcs_id = 30  # id вещества
+    hcs_storage = 'liquid'  # условия хранения АХОВ
     #
     # json_args = {
     #
@@ -176,11 +173,11 @@ if __name__ == '__main__':
       % depth)
 
     possible_contamination = get_possible_contamination_area(depth, wind_speed)
-    print("4. Площадь зоены возможного заражения АХОВ: \n%s"
+    print("6. Площадь зоены возможного заражения АХОВ: \n%s"
       % possible_contamination)
 
     actual_contamination = get_actual_contamination_area(depth, dovsoa, after_crash_time.total_seconds()/3600)
-    print("4. Площадь зоены фактического заражения АХОВ: \n%s"
+    print("7. Площадь зоены фактического заражения АХОВ: \n%s"
       % actual_contamination)
     # equivalent_amount_1(k1237, dovsoa, air_t, q)
 

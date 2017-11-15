@@ -53,9 +53,14 @@ print(datetime.time(datetime.now()))
 # datetime.combine(date, time) - объект datetime из комбинации объектов date и time.
 # print(datetime.datetime.time(13, 30))
 # timestamp = datetime.today().timestamp()
-dtime = time(7, 0)
-dt = date(2017, 4, 19)
+# dtime = time(7, 0)
+# dtime = time()
+dtime = datetime.now().time()
+
+# dt = date(2017, 4, 19)
+dt = datetime.now()
 dstamp = datetime.combine(dt, dtime).timestamp()
+
 dt = datetime.fromtimestamp(dstamp)
 
 print('sunrise %s' % sun['sunrise'])
@@ -165,9 +170,9 @@ if __name__ == '__main__':
     print('timedelta: %s' % (sun['sunrise'] + timedelta(hours=2)).replace(tzinfo=None))
     print(dt)
     print(dt - sun['sunrise'].replace(tzinfo=None))
-    print('time of day: %s' % time_of_day(dt, 'Moscow'))
-    print(get_dovsoa(1, 'day', cloudiness=False, snow=False))
-    print(get_k7([0.1, 0.2, 0.1, 1, 2.2], 35))
+    print('Время суток: %s' % time_of_day(dt, 'Moscow'))
+    print(get_dovsoa(1, time_of_day(dt, 'Moscow'), cloudiness=False, snow=False))
+    # print(get_k7([0.1, 0.2, 0.1, 1, 2.2], 35))
 
 
 # Под термином «утро» понимается период времени в течение 2 ч после восхода солнца
