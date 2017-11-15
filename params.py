@@ -7,6 +7,7 @@ from k1237 import *
 import math
 import numpy
 from datetime import datetime, date, timedelta
+from scipy.interpolate import interp1d
 
 
 class Coeff:
@@ -90,6 +91,7 @@ class Coeff:
 
 
     def get_k7(self, air_t, cloud=1, hcs_storage='gas_no_pressure'):
+        # К7 - коэффициент, учитывающий влияние температуры воздуха (приложение 3; для сжатых газов К7 = 1);
         # cloud = 1, 2 - первичное, вторичное облако
         # коэффициент, учитывающий влияние температуры воздуха ; для сжатых газов К7 = 1;
         # value_list = list(zip([-40, -20, 0, 20, 40], eval(val_list)))
@@ -98,15 +100,27 @@ class Coeff:
             return 1
         if cloud == 1:
             # print(self.k1237.k7_1_f)
-            k7 = eval(self.k1237.k7_1_f)
+            # k7_list = eval(self.k1237.k7_1_f)
+            k7_list = eval(self.k1237.k7_1)
         elif cloud == 2:
             if self.k1237.k7_2:
-                k7 = eval(self.k1237.k7_2_f)
+                # k7_list = eval(self.k1237.k7_2_f)
+                k7_list = eval(self.k1237.k7_2)
             else:
-                k7 = eval(self.k1237.k7_1_f)
+                # k7_list = eval(self.k1237.k7_1_f)
+                k7_list = eval(self.k1237.k7_1)
+        if isinstance(k7_list, list):
+            inter_func = interp1d([-40, -20, 0, 20, 40], k7_list)
+            val_list = dict(zip([-40, -20, 0, 20, 40], k7_list))
+            if air_t < -40:
+                k7 = val_list[-40]
+            elif air_t > 40:
+                k7 = val_list[40]
+            else:
+                k7 = inter_func(air_t)
+            return k7
         else:
             return None
-        return k7
 
     def get_density(self, atmospheric_pressure, hcs_storage):
         # Плотности газообразных СДЯВ gas_density приведены для атмосферного давления; при давлении в емкости,
@@ -120,6 +134,8 @@ class Coeff:
 
     def get_layer_thickness(self, spillage, embank_height = 0):
         """
+        Получение толщины слоя жидкости
+        embank_height - высота поддона или обваловки
         Толщина h слоя жидкости для АХОВ, разлившихся свободно на подстилающей поверхности,
         принимается равной 0,05 м по всей площади разлива; для СДЯВ, разлившихся в поддон или обваловку,
         определяется следующим образом:
@@ -135,7 +151,6 @@ class Coeff:
         if spillage=='free_spillage':
             layer_thickness = 0.05
         return layer_thickness
-
 
 def get_substance_mount(substance_mount, k1237):
     # При авариях на хранилищах сжатого газа - substance_mount - это объем хранилища
